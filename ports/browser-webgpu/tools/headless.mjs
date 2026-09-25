@@ -29,11 +29,15 @@ if (!pages[which]) {
 
 const candidates = [
   process.env.CHROME,
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+  '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  '/Applications/Chromium.app/Contents/MacOS/Chromium',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
   'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/google-chrome',
   '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
 ].filter(Boolean);
 const chrome = candidates.find((path) => existsSync(path));
 if (!chrome) {
@@ -67,7 +71,7 @@ const headed = process.env.NR_HEADED === '1';
 const browser = spawn(chrome, [
   ...(headed ? [] : ['--headless=new']),
   '--enable-unsafe-webgpu',
-  '--enable-features=Vulkan',
+  ...(process.platform === 'darwin' ? [] : ['--enable-features=Vulkan']),
   `--user-data-dir=${profile}`,
   '--no-first-run',
   '--no-default-browser-check',

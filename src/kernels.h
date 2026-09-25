@@ -182,6 +182,7 @@ class Kernels {
   ChainTimeouts chainTimeouts() const;
   void resetChainTimeouts();
   struct Chain {
+    Chain() {}
     VkDeviceAddress waitRows = 0; uint32_t waitExpected = 0, waitShiftY = 0;   // window-row counters (attention output)
     VkDeviceAddress waitBands = 0; uint32_t waitMul = 1, waitGroupRows = 64;   // row-band counters (FFN / projection output), signals per row group, the producer's rows per workgroup
     VkDeviceAddress signal = 0;                                                // counters to increment
