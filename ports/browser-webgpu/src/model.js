@@ -85,7 +85,11 @@ export class Model {
    * weights are 141 MiB, which is long enough that a demo has to say something while it waits.
    */
   async load(directory, onProgress) {
-    const manifest = await (await fetch(`${directory}/manifest.json`)).json();
+    const response = await fetch(`${directory}/manifest.json`);
+    if (!response.ok) {
+      throw new Error(`DLSS weights manifest not found at ${directory}/manifest.json (HTTP ${response.status}). Set NR_WEIGHTS=/path/to/models/nr`);
+    }
+    const manifest = await response.json();
     this.blockCount = manifest.totals.blockCount;
 
     const total = manifest.stages.reduce((sum, stage) => sum + stage.packedByteLength, 0);

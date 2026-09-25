@@ -43,7 +43,25 @@ async function main() {
     viewer.renderer.refreshPipeline()
     viewer.renderEnabled = true
     ;(window as any).dlssViewer = viewer
-    window.dispatchEvent(new CustomEvent('dlss-viewer-ready', {detail: viewer}))
+    window.addEventListener('dragover', (e) => e.preventDefault())
+    window.addEventListener('drop', async (e) => {
+        e.preventDefault()
+        const files = new Map<string, File>()
+        if (e.dataTransfer?.files) {
+            for (let i = 0; i < e.dataTransfer.files.length; i++) {
+                const f = e.dataTransfer.files[i]
+                files.set(f.name, f)
+            }
+        }
+        if (files.size > 0 && (window as any).dlssImportFiles) {
+            try {
+                await (window as any).dlssImportFiles(files)
+            } catch (err: any) {
+                console.error('File import failed:', err)
+                alert(`Failed to import 3D model: ${err?.message || err}`)
+            }
+        }
+    })
     viewer.setDirty()
 }
 

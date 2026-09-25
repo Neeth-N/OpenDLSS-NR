@@ -129,11 +129,15 @@ Once started, open any of the following URLs in your browser:
 
 ### 3. Interactive 3D Demo
 👉 **`http://localhost:8099/demo/index.html`**
-- 3D WebGI scene viewer integrated with the DLSS 5 Neural Rendering WebGPU inference pipeline.
-- Supports keyboard controls:
+- 3D WebGI scene viewer integrated with the DLSS 5 Neural Rendering WebGPU pipeline.
+- **Built-in Fallback Scene**: If external scene packs like Cowboy Gramps are not mounted, the demo automatically falls back to an interactive metallic 3D test scene so the viewer always runs out of the box.
+- **Drag & Drop Local Models**: You can drag and drop any `.glb` or `.gltf` 3D model directly onto the browser canvas to view and test custom models.
+- **Scene Dropdown**: Switch between the Built-in 3D Demo, Cowboy Gramps, or click "Open Local Model..." to browse for a 3D file on your Mac.
+- Supports keyboard and mouse controls:
   - <kbd>Drag</kbd> to orbit camera
   - <kbd>Scroll</kbd> to zoom
   - <kbd>R</kbd> toggle render
+  - <kbd>L</kbd> live rendering toggle
   - <kbd>F6</kbd> compare split-screen view
 
 ---

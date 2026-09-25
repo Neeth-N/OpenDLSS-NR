@@ -1,6 +1,6 @@
 import {ViewerApp} from 'webgi/viewer/ViewerApp'
 import {DlssBridgePlugin} from 'webgi/plugins/DlssBridgePlugin'
-import {Mesh, Light} from 'three'
+import {Mesh, Light, TorusKnotGeometry, MeshPhysicalMaterial, Color, DirectionalLight, Vector3} from 'three'
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls'
 import {configureBistroLighting} from './nr-bistro-lighting'
 import {SSAOPlugin} from 'webgi/plugins/SSAOPlugin'
@@ -8,8 +8,11 @@ import {configureLoneMonkScene} from './nr-lone-monk-scene'
 import {blendkitScenes, loadBlendkitScene} from './nr-blendkit-scenes'
 import {assetUrl} from '../asset-url.js'
 
-// Cowboy Gramps is the only scene this build ships assets for.
-const sceneNames: Record<string, string> = {'selection-five': blendkitScenes['selection-five']}
+// Built-in fallback scene and Cowboy Gramps
+const sceneNames: Record<string, string> = {
+    'builtin-demo': 'Built-in 3D Demo',
+    'selection-five': blendkitScenes['selection-five'],
+}
 const modelExtensions = new Set(['glb', 'gltf', 'drc', 'obj', 'fbx', 'stl', '3dm', 'zip'])
 const defaultLocalEnvironment = 'studio-small-08'
 const localEnvironments: Record<string, {label: string, path?: string}> = {
@@ -144,6 +147,60 @@ export async function mountDemoScenes(viewer: ViewerApp, bridge: DlssBridgePlugi
         window.dispatchEvent(new CustomEvent('dlss-local-environment-changed', {detail: {id}}))
     }
 
+    async function loadBuiltinScene(viewer: ViewerApp, dispose: (fn: () => void) => void) {
+        const {scene} = viewer
+        const camera = scene.activeCamera
+
+        const geometry = new TorusKnotGeometry(0.85, 0.26, 128, 32)
+        const material = new MeshPhysicalMaterial({
+            color: new Color(0x38bdf8),
+            metalness: 0.9,
+            roughness: 0.15,
+            clearcoat: 0.8,
+            clearcoatRoughness: 0.1,
+        })
+        const mesh = new Mesh(geometry, material)
+        mesh.name = 'BuiltinDemoMesh'
+        mesh.castShadow = true
+        mesh.receiveShadow = true
+        viewer.scene.modelRoot.add(mesh)
+
+        const keyLight = new DirectionalLight(0xffffff, 3.5)
+        keyLight.position.set(4, 6, 5)
+        keyLight.castShadow = true
+        viewer.scene.add(keyLight)
+
+        const fillLight = new DirectionalLight(0x818cf8, 1.8)
+        fillLight.position.set(-4, -2, -3)
+        viewer.scene.add(fillLight)
+
+        camera.setCameraOptions({
+            position: new Vector3(0, 0.5, 3.8),
+            target: new Vector3(0, 0, 0),
+            fov: 45,
+            near: 0.1,
+            far: 100,
+        })
+
+        const onPreFrame = () => {
+            mesh.rotation.y += 0.008
+            mesh.rotation.x += 0.004
+            viewer.setDirty()
+        }
+        viewer.addEventListener('preFrame', onPreFrame)
+
+        dispose(() => {
+            viewer.removeEventListener('preFrame', onPreFrame)
+            mesh.removeFromParent()
+            geometry.dispose()
+            material.dispose()
+            keyLight.removeFromParent()
+            keyLight.dispose()
+            fillLight.removeFromParent()
+            fillLight.dispose()
+        })
+    }
+
     async function changeScene(id: string) {
         if (!sceneNames[id]) throw new Error('Unknown demo scene')
         if (changing) throw new Error('A scene is already loading')
@@ -161,7 +218,9 @@ export async function mountDemoScenes(viewer: ViewerApp, bridge: DlssBridgePlugi
             status.textContent = `Loading ${sceneNames[id]}…`
             status.dataset.state = 'active'
             await clearScene()
-            if (blendkitScenes[id]) {
+            if (id === 'builtin-demo') {
+                await loadBuiltinScene(viewer, dispose => disposers.push(dispose))
+            } else if (blendkitScenes[id]) {
                 await loadBlendkitScene(viewer, id, dispose => disposers.push(dispose))
             } else if (id === 'bistro') {
                 const response = await fetch(assetUrl('/scenes/bistro/view.json'))
@@ -326,10 +385,34 @@ export async function mountDemoScenes(viewer: ViewerApp, bridge: DlssBridgePlugi
     } catch { /* Storage is optional. */ }
     globals.dlssChangeScene = changeScene
     globals.dlssImportFiles = importLocalFiles
+    globals.dlssPromptForFile = () => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = [...modelExtensions].map(e => `.${e}`).join(',')
+        input.style.display = 'none'
+        input.onchange = async () => {
+            if (input.files && input.files.length > 0) {
+                const map = new Map<string, File>()
+                for (let i = 0; i < input.files.length; i++) {
+                    const f = input.files[i]
+                    map.set(f.name, f)
+                }
+                await importLocalFiles(map)
+            }
+            input.remove()
+        }
+        document.body.appendChild(input)
+        input.click()
+    }
     globals.dlssSetLocalEnvironment = setLocalEnvironment
     globals.dlssLocalEnvironment = localEnvironmentId
     globals.dlssEmbeddedEnvironment = false
     globals.dlssLocalEnvironments = Object.fromEntries(Object.entries(localEnvironments)
         .map(([id, environment]) => [environment.label, id]))
-    await changeScene(initial)
+    try {
+        await changeScene(initial)
+    } catch (err) {
+        console.warn(`Initial scene '${initial}' unavailable, loading built-in 3D demo scene:`, err)
+        await changeScene('builtin-demo')
+    }
 }

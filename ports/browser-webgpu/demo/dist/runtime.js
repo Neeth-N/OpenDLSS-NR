@@ -4887,14 +4887,18 @@ var init_demo_ui = __esm({
       if (!showingDlss()) recordFrame("source");
     };
     controls = {
-      scene: "selection-five",
+      scene: "builtin-demo",
       mode: sr ? chain ? "srnr" : "sr" : "nr",
       live: false,
       output: "dlss",
       render: () => actions?.render()
     };
     demo = parameters.createGroup("Demo");
-    scenes = { "Cowboy Gramps": "selection-five" };
+    scenes = {
+      "Built-in 3D Demo": "builtin-demo",
+      "Cowboy Gramps": "selection-five",
+      "Open Local Model (.glb)...": "local-file"
+    };
     sceneControl = labelControl(demo.add(controls, "scene", scenes), "scene", "demoScene").onChange(async (value) => {
       if (loadingScene || !globalThis.dlssChangeScene) return;
       if (value === "local-file") {
@@ -5044,6 +5048,7 @@ var init_demo_ui = __esm({
       profiler.dispose();
     }, { once: true });
     attributions = {
+      "builtin-demo": ["Built-in 3D Demo", "#", " \xB7 Metallic Torus Knot \xB7 Drag & drop any .glb model"],
       "simple-lighting": ["Simple Lighting", "https://www.blendkit.com/asset-gallery-detail/2d3edff0-47f6-4bd6-9d1b-cbde69378c65/", " \xB7 Ryder Booth \xB7 Mustang by AIR3D \xB7 BlenderKit"],
       "vege-packshot": ["Vege packshot", "https://www.blendkit.com/asset-gallery-detail/ed54839b-fc24-4651-8fae-da3ac8f547a0/", " \xB7 Bart Papis \xB7 BlenderKit"],
       arunthayan: ["Arunthayan", "https://www.blendkit.com/asset-gallery-detail/7d65df92-91fc-47ad-b967-086378a87707/", " \xB7 Muhammed Ismayil \xB7 BlenderKit"],
@@ -5588,15 +5593,19 @@ var init_model = __esm({
        * weights are 141 MiB, which is long enough that a demo has to say something while it waits.
        */
       async load(directory, onProgress) {
-        const manifest = await (await fetch(`${directory}/manifest.json`)).json();
+        const response = await fetch(`${directory}/manifest.json`);
+        if (!response.ok) {
+          throw new Error(`DLSS weights manifest not found at ${directory}/manifest.json (HTTP ${response.status}). Set NR_WEIGHTS=/path/to/models/nr`);
+        }
+        const manifest = await response.json();
         this.blockCount = manifest.totals.blockCount;
         const total = manifest.stages.reduce((sum, stage) => sum + stage.packedByteLength, 0);
         let loaded = 0;
         const stages = /* @__PURE__ */ new Map();
         for (const stage of manifest.stages) {
-          const response = await fetch(`${directory}/model/${stage.file}`);
-          if (!response.ok) throw new Error(`cannot read stage ${stage.id}`);
-          const bytes = new Uint8Array(await response.arrayBuffer());
+          const response2 = await fetch(`${directory}/model/${stage.file}`);
+          if (!response2.ok) throw new Error(`cannot read stage ${stage.id}`);
+          const bytes = new Uint8Array(await response2.arrayBuffer());
           if (bytes.byteLength !== stage.packedByteLength) throw new Error(`stage size mismatch: ${stage.id}`);
           stages.set(stage.id, bytes);
           loaded += bytes.byteLength;
@@ -10813,8 +10822,8 @@ async function runCapturedFrame(frame, queuedCapture = null) {
     state.pendingProductionFrame = null;
     state.rerunRequested = false;
     state.captureRequested = false;
-    document.querySelector("#nrLive")?.setAttribute("aria-pressed", "false");
     if (state.viewer) state.viewer.renderEnabled = true;
+    globalThis.dlssLoading?.finish();
   } finally {
     state.running = false;
     state.activeSlot = null;

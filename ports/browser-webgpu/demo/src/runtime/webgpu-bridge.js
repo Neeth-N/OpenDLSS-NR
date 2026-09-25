@@ -1061,8 +1061,8 @@ async function runCapturedFrame(frame, queuedCapture = null) {
     state.pendingProductionFrame = null;
     state.rerunRequested = false;
     state.captureRequested = false;
-    document.querySelector('#nrLive')?.setAttribute('aria-pressed', 'false');
     if (state.viewer) state.viewer.renderEnabled = true;
+    globalThis.dlssLoading?.finish();
   } finally {
     state.running = false;
     state.activeSlot = null;

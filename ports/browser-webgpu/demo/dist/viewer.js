@@ -120,6 +120,9 @@
     TemporalAAPlugin,
     Texture,
     TonemapPlugin,
+    TorusKnotGeometry,
+    BoxGeometry,
+    SphereGeometry,
     uiFolder,
     uiToggle,
     UnsignedByteType,
@@ -226,10 +229,10 @@
   };
 
   // src/webgi-addon/shaders/ssVelocityVert.glsl
-  var ssVelocityVert_default = "#ifdef USE_ALPHAMAP\r\n#define USE_UV\r\n#endif\r\n#include <batching_pars_vertex>\r\n#include <uv_pars_vertex>\r\n#include <morphtarget_pars_vertex>\r\n#include <skinning_pars_vertex>\r\n#include <logdepthbuf_pars_vertex>\r\n#include <clipping_planes_pars_vertex>\r\n\r\n//varying vec3 vViewPosition;\r\n\r\nvarying vec3 vWorldPosition;\r\nvarying vec3 vWorldPositionPrevious;\r\n\r\nuniform mat4 modelMatrixPrevious;\r\n\r\nvoid main() {\r\n\r\n    #include <uv_vertex>\r\n    #include <batching_vertex>\r\n    #include <skinbase_vertex>\r\n\r\n    #include <begin_vertex>\r\n    #include <morphtarget_vertex>\r\n    #include <skinning_vertex>\r\n    #include <displacementmap_vertex>\r\n\r\n    // project_vertex\r\n\r\n    vec4 mvPosition = vec4( transformed, 1.0 );\r\n\r\n    #ifdef USE_INSTANCING\r\n\r\n    mvPosition = instanceMatrix * mvPosition;\r\n\r\n    #endif\r\n\r\n    vWorldPosition = (modelMatrix * mvPosition).xyz;\r\n    vWorldPositionPrevious = (modelMatrixPrevious * mvPosition).xyz;\r\n\r\n    mvPosition = modelViewMatrix * mvPosition;\r\n\r\n    gl_Position = projectionMatrix * mvPosition;\r\n\r\n    #include <logdepthbuf_vertex>\r\n    #include <clipping_planes_vertex>\r\n\r\n//    vViewPosition = - mvPosition.xyz;\r\n\r\n}\r\n";
+  var ssVelocityVert_default = "#ifdef USE_ALPHAMAP\n#define USE_UV\n#endif\n#include <batching_pars_vertex>\n#include <uv_pars_vertex>\n#include <morphtarget_pars_vertex>\n#include <skinning_pars_vertex>\n#include <logdepthbuf_pars_vertex>\n#include <clipping_planes_pars_vertex>\n\n//varying vec3 vViewPosition;\n\nvarying vec3 vWorldPosition;\nvarying vec3 vWorldPositionPrevious;\n\nuniform mat4 modelMatrixPrevious;\n\nvoid main() {\n\n    #include <uv_vertex>\n    #include <batching_vertex>\n    #include <skinbase_vertex>\n\n    #include <begin_vertex>\n    #include <morphtarget_vertex>\n    #include <skinning_vertex>\n    #include <displacementmap_vertex>\n\n    // project_vertex\n\n    vec4 mvPosition = vec4( transformed, 1.0 );\n\n    #ifdef USE_INSTANCING\n\n    mvPosition = instanceMatrix * mvPosition;\n\n    #endif\n\n    vWorldPosition = (modelMatrix * mvPosition).xyz;\n    vWorldPositionPrevious = (modelMatrixPrevious * mvPosition).xyz;\n\n    mvPosition = modelViewMatrix * mvPosition;\n\n    gl_Position = projectionMatrix * mvPosition;\n\n    #include <logdepthbuf_vertex>\n    #include <clipping_planes_vertex>\n\n//    vViewPosition = - mvPosition.xyz;\n\n}\n";
 
   // src/webgi-addon/shaders/ssVelocityFrag.glsl
-  var ssVelocityFrag_default = "varying vec3 vWorldPosition;\r\nvarying vec3 vWorldPositionPrevious;\r\nuniform mat4 currentProjectionViewMatrix;\r\nuniform mat4 lastProjectionViewMatrix;\r\n\r\nvec2 computeScreenSpaceVelocity2() {\r\n    vec4 currentPositionClip = currentProjectionViewMatrix * vec4(vWorldPosition, 1.0);\r\n    vec4 prevPositionClip = lastProjectionViewMatrix * vec4(vWorldPositionPrevious, 1.0);\r\n\r\n    vec2 currentPositionNDC = currentPositionClip.xy / currentPositionClip.w;\r\n    vec2 prevPositionNDC = prevPositionClip.xy / prevPositionClip.w;\r\n\r\n    if(prevPositionNDC.x >= 1.0 || prevPositionNDC.x <= -1.0 || prevPositionNDC.y >= 1.0 || prevPositionNDC.y <= -1.0) {\n        return vec2(0.0);\n    }\n    // DLSS expects current-to-previous motion: from the current pixel to\n    // where that surface point was in the previous frame.\n    return 0.5 * (prevPositionNDC - currentPositionNDC);\n}\n\r\nvoid main() {\n    vec2 velocity = clamp(computeScreenSpaceVelocity2(), -1.0, 1.0);\n#ifdef VELOCITY_RAW\n    gl_FragColor = vec4(velocity, 0.0, 1.0);\n#else\n    velocity = sign(velocity) * pow(abs(velocity), vec2(1./4.));\n    velocity = velocity * 0.5 + 0.5;\n    gl_FragColor = vec4(velocity.x, velocity.y, 1., 1.);\n#endif\n\n//    float speed = length(computeScreenSpaceVelocity2());\n//    gl_FragColor = vec4(speed, speed, speed, 1.);\r\n}\r\n";
+  var ssVelocityFrag_default = "varying vec3 vWorldPosition;\nvarying vec3 vWorldPositionPrevious;\nuniform mat4 currentProjectionViewMatrix;\nuniform mat4 lastProjectionViewMatrix;\n\nvec2 computeScreenSpaceVelocity2() {\n    vec4 currentPositionClip = currentProjectionViewMatrix * vec4(vWorldPosition, 1.0);\n    vec4 prevPositionClip = lastProjectionViewMatrix * vec4(vWorldPositionPrevious, 1.0);\n\n    vec2 currentPositionNDC = currentPositionClip.xy / currentPositionClip.w;\n    vec2 prevPositionNDC = prevPositionClip.xy / prevPositionClip.w;\n\n    if(prevPositionNDC.x >= 1.0 || prevPositionNDC.x <= -1.0 || prevPositionNDC.y >= 1.0 || prevPositionNDC.y <= -1.0) {\n        return vec2(0.0);\n    }\n    // DLSS expects current-to-previous motion: from the current pixel to\n    // where that surface point was in the previous frame.\n    return 0.5 * (prevPositionNDC - currentPositionNDC);\n}\n\nvoid main() {\n    vec2 velocity = clamp(computeScreenSpaceVelocity2(), -1.0, 1.0);\n#ifdef VELOCITY_RAW\n    gl_FragColor = vec4(velocity, 0.0, 1.0);\n#else\n    velocity = sign(velocity) * pow(abs(velocity), vec2(1./4.));\n    velocity = velocity * 0.5 + 0.5;\n    gl_FragColor = vec4(velocity.x, velocity.y, 1., 1.);\n#endif\n\n//    float speed = length(computeScreenSpaceVelocity2());\n//    gl_FragColor = vec4(speed, speed, speed, 1.);\n}\n";
 
   // src/webgi-addon/passes/DlssVelocityPass.ts
   var DlssVelocityPass = class extends RenderPass {
@@ -2972,7 +2975,10 @@ void main() {
   }
 
   // src/scenes/nr-demo-scenes.ts
-  var sceneNames = { "selection-five": blendkitScenes["selection-five"] };
+  var sceneNames = {
+    "builtin-demo": "Built-in 3D Demo",
+    "selection-five": blendkitScenes["selection-five"]
+  };
   var modelExtensions = /* @__PURE__ */ new Set(["glb", "gltf", "drc", "obj", "fbx", "stl", "3dm", "zip"]);
   var defaultLocalEnvironment = "studio-small-08";
   var localEnvironments = {
@@ -3107,6 +3113,53 @@ void main() {
       globals.dlssLocalEnvironment = id;
       window.dispatchEvent(new CustomEvent("dlss-local-environment-changed", { detail: { id } }));
     }
+    async function loadBuiltinScene(viewer2, dispose) {
+      const { scene: scene2 } = viewer2;
+      const camera3 = scene2.activeCamera;
+      const geometry2 = new TorusKnotGeometry(0.85, 0.26, 128, 32);
+      const material = new MeshPhysicalMaterial({
+        color: new Color(3718648),
+        metalness: 0.9,
+        roughness: 0.15,
+        clearcoat: 0.8,
+        clearcoatRoughness: 0.1
+      });
+      const mesh = new Mesh(geometry2, material);
+      mesh.name = "BuiltinDemoMesh";
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      viewer2.scene.modelRoot.add(mesh);
+      const keyLight = new DirectionalLight(16777215, 3.5);
+      keyLight.position.set(4, 6, 5);
+      keyLight.castShadow = true;
+      viewer2.scene.add(keyLight);
+      const fillLight = new DirectionalLight(8490232, 1.8);
+      fillLight.position.set(-4, -2, -3);
+      viewer2.scene.add(fillLight);
+      camera3.setCameraOptions({
+        position: new Vector3(0, 0.5, 3.8),
+        target: new Vector3(0, 0, 0),
+        fov: 45,
+        near: 0.1,
+        far: 100
+      });
+      const onPreFrame = () => {
+        mesh.rotation.y += 8e-3;
+        mesh.rotation.x += 4e-3;
+        viewer2.setDirty();
+      };
+      viewer2.addEventListener("preFrame", onPreFrame);
+      dispose(() => {
+        viewer2.removeEventListener("preFrame", onPreFrame);
+        mesh.removeFromParent();
+        geometry2.dispose();
+        material.dispose();
+        keyLight.removeFromParent();
+        keyLight.dispose();
+        fillLight.removeFromParent();
+        fillLight.dispose();
+      });
+    }
     async function changeScene(id) {
       if (!sceneNames[id]) throw new Error("Unknown demo scene");
       if (changing) throw new Error("A scene is already loading");
@@ -3124,7 +3177,9 @@ void main() {
         status.textContent = `Loading ${sceneNames[id]}\u2026`;
         status.dataset.state = "active";
         await clearScene();
-        if (blendkitScenes[id]) {
+        if (id === "builtin-demo") {
+          await loadBuiltinScene(viewer, (dispose) => disposers.push(dispose));
+        } else if (blendkitScenes[id]) {
           await loadBlendkitScene(viewer, id, (dispose) => disposers.push(dispose));
         } else if (id === "bistro") {
           const response = await fetch(assetUrl("/scenes/bistro/view.json"));
@@ -3284,11 +3339,35 @@ void main() {
     }
     globals.dlssChangeScene = changeScene;
     globals.dlssImportFiles = importLocalFiles;
+    globals.dlssPromptForFile = () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = [...modelExtensions].map((e) => `.${e}`).join(",");
+      input.style.display = "none";
+      input.onchange = async () => {
+        if (input.files && input.files.length > 0) {
+          const map = /* @__PURE__ */ new Map();
+          for (let i = 0; i < input.files.length; i++) {
+            const f = input.files[i];
+            map.set(f.name, f);
+          }
+          await importLocalFiles(map);
+        }
+        input.remove();
+      };
+      document.body.appendChild(input);
+      input.click();
+    };
     globals.dlssSetLocalEnvironment = setLocalEnvironment;
     globals.dlssLocalEnvironment = localEnvironmentId;
     globals.dlssEmbeddedEnvironment = false;
     globals.dlssLocalEnvironments = Object.fromEntries(Object.entries(localEnvironments).map(([id, environment]) => [environment.label, id]));
-    await changeScene(initial);
+    try {
+      await changeScene(initial);
+    } catch (err) {
+      console.warn(`Initial scene '${initial}' unavailable, loading built-in 3D demo scene:`, err);
+      await changeScene("builtin-demo");
+    }
   }
 
   // src/main.ts
@@ -3335,7 +3414,25 @@ void main() {
     viewer.renderer.refreshPipeline();
     viewer.renderEnabled = true;
     window.dlssViewer = viewer;
-    window.dispatchEvent(new CustomEvent("dlss-viewer-ready", { detail: viewer }));
+    window.addEventListener("dragover", (e) => e.preventDefault());
+    window.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      const files = /* @__PURE__ */ new Map();
+      if (e.dataTransfer?.files) {
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+          const f = e.dataTransfer.files[i];
+          files.set(f.name, f);
+        }
+      }
+      if (files.size > 0 && window.dlssImportFiles) {
+        try {
+          await window.dlssImportFiles(files);
+        } catch (err) {
+          console.error("File import failed:", err);
+          alert(`Failed to import 3D model: ${err?.message || err}`);
+        }
+      }
+    });
     viewer.setDirty();
   }
   main().catch((error) => {

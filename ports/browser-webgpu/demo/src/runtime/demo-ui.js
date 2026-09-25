@@ -76,10 +76,14 @@ function recordFrame(kind) {
   while (times.length > 2 && times[0] < now - 1500) times.shift();
 }
 function showingDlss() { return sr ? runtime?.visible : runtime?.neuralVisible; }
-const controls = {scene: 'selection-five', mode: sr ? (chain ? 'srnr' : 'sr') : 'nr',
+const controls = {scene: 'builtin-demo', mode: sr ? (chain ? 'srnr' : 'sr') : 'nr',
   live: false, output: 'dlss', render: () => actions?.render()};
 const demo = parameters.createGroup('Demo');
-const scenes = {'Cowboy Gramps': 'selection-five'};
+const scenes = {
+  'Built-in 3D Demo': 'builtin-demo',
+  'Cowboy Gramps': 'selection-five',
+  'Open Local Model (.glb)...': 'local-file',
+};
 const sceneControl = labelControl(demo.add(controls, 'scene', scenes), 'scene', 'demoScene').onChange(async value => {
   if (loadingScene || !globalThis.dlssChangeScene) return;
   if (value === 'local-file') {
@@ -222,6 +226,7 @@ if (globalThis.dlssViewer) trackViewer(globalThis.dlssViewer);
 addEventListener('pagehide', () => { clearInterval(timer); trackViewer(null); profiler.dispose(); }, {once: true});
 
 const attributions = {
+  'builtin-demo': ['Built-in 3D Demo', '#', ' · Metallic Torus Knot · Drag & drop any .glb model'],
   'simple-lighting': ['Simple Lighting', 'https://www.blendkit.com/asset-gallery-detail/2d3edff0-47f6-4bd6-9d1b-cbde69378c65/', ' · Ryder Booth · Mustang by AIR3D · BlenderKit'],
   'vege-packshot': ['Vege packshot', 'https://www.blendkit.com/asset-gallery-detail/ed54839b-fc24-4651-8fae-da3ac8f547a0/', ' · Bart Papis · BlenderKit'],
   arunthayan: ['Arunthayan', 'https://www.blendkit.com/asset-gallery-detail/7d65df92-91fc-47ad-b967-086378a87707/', ' · Muhammed Ismayil · BlenderKit'],
